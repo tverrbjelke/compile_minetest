@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#Read README.txt of the tarball...
+# Read README.txt of the sources.
 
 echo "This script will unpack and then build minetest from sources."
 echo "either by let it itself download stuff from github."
@@ -33,6 +33,7 @@ export RUN_IN_PLACE=TRUE
 # if you are using tarball, we expect current working directory or $1 contains it.
 # we expect SOURCE_BASEPATH and DEST_BASE folder to already exist...
 # If you are using git, we expect the repo already cloned, e.g. 
+# Some mods also can be installed either by git or tarball.
 USE_TARBALL_OR_GIT=GIT
 
 # all as one-liner - so have the backslash as last character of each line here...
@@ -40,18 +41,24 @@ export BUILD_OPTS="-DRUN_IN_PLACE=${RUN_IN_PLACE} -DCMAKE_BUILD_TYPE=Release -DE
   -DENABLE_FREETYPE=1  -DBUILD_CLIENT=1 -DBUILD_SERVER=1 -DENABLE_CURL=1  -DENABLE_GLES=1 \
   -DENABLE_LEVELDB=0 -DENABLE_SPATIAL=1 -DENABLE_LUAJIT=1 -DENABLE_SYSTEM_GMP=1 \
   -DENABLE_REDIS=1 -DENABLE_SOUND=1"
-
+echo "Using this compile flags:"
 echo ${BUILD_OPTS}
+
 # I want to be able to jump over/into individual steps - for debugging
 
 # Really install system packages?
 DO_INSTALL_SYSTEM_PACKAGES=NO
+
+# Download sources and then inject into the *global* mods folder.
+DO_INSTALL_MOD_DREAMBUILDER=TRUE
+DO_INSTALL_MOD_WARDROBE=TRUE
 
 # untar / git-clone and prepare stuff ?
 DO_PREPARE_BUILD=YES
 
 # now also start build process?
 DO_BUILD=YES
+
 
 ##############################################################
 # the remainder of the script *should* work automagically...
@@ -69,7 +76,7 @@ then
    export DEST_BASE=$1
 fi
 
-#should be empty!
+# todo should be empty, maybe better ask if to clear out existing folder?
 mkdir ${DEST_BASE}/${MINETEST}
 # todo check if it now exists, writable etc... else: abort
 
@@ -171,8 +178,8 @@ then
 
     cd ${CWD_TMP} # go back from where we came
   fi
-
 fi # DO_INSTALL_SYSTEM_PACKAGES
+
 
 if [[ $DO_BUILD == "YES" ]]
 then
@@ -197,6 +204,54 @@ then
   cd ${CWD_TMP} # go back from where we came
 
 fi # DO_BUILD
+
+
+# install all this mods globally.
+MOD_DEST_PATH=${DEST_BASE}/${MINETEST}/mods
+
+# had some issues installing this mod and so I tried both git and tarball installations. 
+# Hence this two sources git and tarball here...
+if [[ $DO_INSTALL_MOD_DREAMBUILDER == "TRUE" ]]
+then
+  echo "installing dreambuilder_modpack, see  https://forum.minetest.net/viewtopic.php?f=11&t=9196" | tee -a ${LOGFILE}
+
+  if [[ $USE_TARBALL_OR_GIT == "TAR" ]]
+  then
+    CWD_TMP=${PWD}
+    cd ${MOD_DEST_PATH}
+    # todo check if wget is installed... and if download succeeded
+    wget https://daconcepts.com/vanessa/hobbies/minetest/Dreambuilder_Modpack.tar.bz2
+    tar -xjf Dreambuilder_Modpack.tar.bz2
+    #rm Dreambuilder_Modpack.tar.bz2
+    echo cd ${CWD_TMP} # go back from where we came
+  fi
+
+  if [[ $USE_TARBALL_OR_GIT == "GIT" ]]
+  then
+    git clone https://github.com/VanessaE/dreambuilder_modpack.git  ${MOD_DEST_PATH}/dreambuilder_modpack
+  fi
+
+  echo "dreambuilder_modpack should now be in ${MOD_DEST_PATH}/dreambuilder_modpack/" | tee -a ${LOGFILE}
+  echo "maybe you need to configure / tweek it..."  | tee -a ${LOGFILE}
+fi
+
+
+if [[ $DO_INSTALL_MOD_WARDROBE == "TRUE" ]]
+then
+  echo "installing mod wardrobe, see https://forum.minetest.net/viewtopic.php?f=9&t=9680&hilit=wardrobe" | tee -a ${LOGFILE}
+  # provided only by git
+
+  git clone https://github.com/prestidigitator/minetest-mod-wardrobe.git  ${MOD_DEST_PATH}/wardrobe
+
+  echo "Mod wardrobe should now be in ${MOD_DEST_PATH}/wardrobe/" | tee -a ${LOGFILE}
+  echo "maybe you need to configure and add some skins..."  | tee -a ${LOGFILE}
+fi
+
+
+#todo add more mods?
+# vehicles:
+# git clone https://github.com/D00Med/vehicles.git
+# wget https://github.com/D00Med/vehicles/archive/master.zip
 
 ###########################################
 # old stuff, kept for no good reason but to have em in mind...
