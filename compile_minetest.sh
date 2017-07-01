@@ -47,7 +47,7 @@ echo ${BUILD_OPTS}
 # I want to be able to jump over/into individual steps - for debugging
 
 # Really install system packages?
-DO_INSTALL_SYSTEM_PACKAGES=NO
+DO_INSTALL_SYSTEM_PACKAGES=YES
 
 # Download sources and then inject into the *global* mods folder.
 DO_INSTALL_MOD_DREAMBUILDER=TRUE
@@ -71,9 +71,22 @@ export MINETEST_GAME=minetest_game-${MINETEST_VERSION}
 # we expect to be where the build-folder should be placed
 # or script argument 1 contains the path
 export DEST_BASE=${HOME}/bin
-if [[ $1 != "" ]] 
+if [[ $1 != "" ]]
 then
    export DEST_BASE=$1
+fi
+
+if [[ ! -d ${DEST_BASE} ]]
+then
+   echo "base folder did not exist, creating..."
+   echo "mkdir -p ${DEST_BASE}"
+   mkdir -p ${DEST_BASE}
+fi
+
+if [[ ! -d ${DEST_BASE} ]]
+then
+   echo "Error! No folder ${DEST_BASE}... exiting! "
+   exit 1
 fi
 
 # todo should be empty, maybe better ask if to clear out existing folder?
