@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Read README.txt of the sources.
+# Read README.txt of the source and maybe http://wiki.minetest.com/wiki/Installing_Mods
 
 echo "This script will unpack and then build minetest from sources."
 echo "either by let it itself download stuff from github."
-echo "Or you can download the tarballs of minetest and minetest_game"
+echo "Or you can download each tarball of minetest and minetest_game and mods"
 echo "and then tell this script where the tarballs are located."
 echo 
 echo "I wrote this once as a reminder of what I have done to get it done."
@@ -18,12 +18,50 @@ echo "optional DEST_BASE defaults to HOME/bin/ - where all binaries are build."
 echo "optional SOURCE_BASEPATH defaults to . - this folder contains the (already downloaded) tarballs."
 echo "SOURCE_BASEPATH is only needed when using tarballs and not github."
 echo "SOURCE_BASEPATH is not used at all when using git to clone the sources straight from github."
+echo "The executables of minetest (client/server) are found under"
+echo "DEST_BASE/bin/minetest-${MINETEST_VERSION}/bin/"
+echo
+echo "you can start the client straight away."
+echo "If you want to serve a world, you have to configure the mods once for the new world:" 
+echo "After installing the mods, start Minetest (client), "
+echo "go to the world's 'Configure' menu, click 'Enable All' then 'Save'."
+echo "later you can simply run the minetestserver"
+echo 
+echo "remember also: the 1st logged in user gets automactically ADMIN rights inside the game."
+echo "maybe you want to login / out with a special admin account once per session."
 
 ##############################################################
 # Here you can set options and stuff
 ##############################################################
 
 MINETEST_VERSION=0.4.16
+
+# I want to be able to jump over/into individual steps - for debugging
+
+# Really install system packages? (needs sudo for this to work)
+DO_INSTALL_SYSTEM_PACKAGES=YES
+
+# Download sources and then inject into the *global* mods folder.
+# It expects the mods NOT already been cloned/installed.
+DO_INSTALL_MOD_DREAMBUILDER=TRUE
+
+# I could think that wardrobe conflicts with 3d_armor (but not checked that)
+DO_INSTALL_MOD_WARDROBE=FALSE
+DO_INSTALL_MOD_3D_ARMOR=TRUE
+
+DO_INSTALL_MOD_VEHICLES=TRUE
+DO_INSTALL_MOD_MOB_REDO=TRUE
+
+##############################################
+# here you can specify more stuff, normally leave it as is?
+##############################################
+
+# untar / git-clone and prepare stuff ?
+DO_PREPARE_BUILD=YES
+
+# now also start build process? relates to the minetest binaries
+# put to NO e.g. if you just whant to add mods to an existing minetest 
+DO_BUILD=YES
 
 # install locally =TRUE or system wide =FALSE ?
 # this script only tested with TRUE (or must it be "1"?)
@@ -44,20 +82,6 @@ export BUILD_OPTS="-DRUN_IN_PLACE=${RUN_IN_PLACE} -DCMAKE_BUILD_TYPE=Release -DE
 echo "Using this compile flags:"
 echo ${BUILD_OPTS}
 
-# I want to be able to jump over/into individual steps - for debugging
-
-# Really install system packages?
-DO_INSTALL_SYSTEM_PACKAGES=YES
-
-# Download sources and then inject into the *global* mods folder.
-DO_INSTALL_MOD_DREAMBUILDER=TRUE
-DO_INSTALL_MOD_WARDROBE=TRUE
-
-# untar / git-clone and prepare stuff ?
-DO_PREPARE_BUILD=YES
-
-# now also start build process?
-DO_BUILD=YES
 
 
 ##############################################################
@@ -128,7 +152,9 @@ then
   #apt-get install redis-server libhiredis-dev
 
   # this was for 0.4.16 - straight from README.txt
-  sudo apt-get install build-essential libirrlicht-dev cmake libbz2-dev libpng-dev libjpeg-dev libxxf86vm-dev libgl1-mesa-dev libsqlite3-dev libogg-dev libvorbis-dev libopenal-dev libcurl4-gnutls-dev libfreetype6-dev zlib1g-dev libgmp-dev libjsoncpp-dev
+  sudo apt-get install build-essential libirrlicht-dev cmake libbz2-dev libpng-dev \
+       libjpeg-dev libxxf86vm-dev libgl1-mesa-dev libsqlite3-dev libogg-dev libvorbis-dev \
+       libopenal-dev libcurl4-gnutls-dev libfreetype6-dev zlib1g-dev libgmp-dev libjsoncpp-dev
 fi #DO_INSTALL_SYSTEM_PACKAGES
 
 
@@ -163,7 +189,7 @@ then
     cd ${CWD_TMP} # go back from where we came
   fi
 
-  #todo no errors handled
+  #todo no errors handled - just use one of either TAR or GIT please :-)
   if [[ $USE_TARBALL_OR_GIT == "GIT" ]]
   then
     # so we can go back later since here we must checkout desired version...
@@ -218,6 +244,9 @@ then
 
 fi # DO_BUILD
 
+#############################################################
+# Install mods
+#############################################################
 
 # install all this mods globally.
 MOD_DEST_PATH=${DEST_BASE}/${MINETEST}/mods
@@ -226,7 +255,13 @@ MOD_DEST_PATH=${DEST_BASE}/${MINETEST}/mods
 # Hence this two sources git and tarball here...
 if [[ $DO_INSTALL_MOD_DREAMBUILDER == "TRUE" ]]
 then
-  echo "installing dreambuilder_modpack, see  https://forum.minetest.net/viewtopic.php?f=11&t=9196" | tee -a ${LOGFILE}
+  MOD="dreambuilder_modpack"
+  echo "installing ${MOD}, see  https://forum.minetest.net/viewtopic.php?f=11&t=9196" | tee -a ${LOGFILE}
+  if [[  -d ${MOD_DEST_PATH}/${MOD} ]]
+  then
+      echo "${MOD_DEST_PATH}/${MOD} already exists, deleting old and reinstalling..."
+      rm -Rf "${MOD_DEST_PATH}/${MOD}"
+  fi
 
   if [[ $USE_TARBALL_OR_GIT == "TAR" ]]
   then
@@ -241,31 +276,106 @@ then
 
   if [[ $USE_TARBALL_OR_GIT == "GIT" ]]
   then
-    git clone https://github.com/VanessaE/dreambuilder_modpack.git  ${MOD_DEST_PATH}/dreambuilder_modpack
+    git clone https://github.com/VanessaE/dreambuilder_modpack.git  ${MOD_DEST_PATH}/${MOD}
   fi
 
-  echo "dreambuilder_modpack should now be in ${MOD_DEST_PATH}/dreambuilder_modpack/" | tee -a ${LOGFILE}
+  echo "dreambuilder_modpack should now be in ${MOD_DEST_PATH}/${MOD}/" | tee -a ${LOGFILE}
   echo "maybe you need to configure / tweek it..."  | tee -a ${LOGFILE}
 fi
 
 
 if [[ $DO_INSTALL_MOD_WARDROBE == "TRUE" ]]
 then
+  MOD="wardrobe"
   echo "installing mod wardrobe, see https://forum.minetest.net/viewtopic.php?f=9&t=9680&hilit=wardrobe" | tee -a ${LOGFILE}
   # provided only by git
 
-  git clone https://github.com/prestidigitator/minetest-mod-wardrobe.git  ${MOD_DEST_PATH}/wardrobe
+  if [[ -d ${MOD_DEST_PATH}/${MOD} ]]
+  then
+      echo "${MOD_DEST_PATH}/${MOD} already exists, deleting old and reinstalling..."
+      rm -Rf "${MOD_DEST_PATH}/${MOD}"
+  fi
+  git clone https://github.com/prestidigitator/minetest-mod-wardrobe.git  ${MOD_DEST_PATH}/${MOD}
 
-  echo "Mod wardrobe should now be in ${MOD_DEST_PATH}/wardrobe/" | tee -a ${LOGFILE}
+  echo "Mod wardrobe should now be in ${MOD_DEST_PATH}/${MOD}/" | tee -a ${LOGFILE}
   echo "maybe you need to configure and add some skins..."  | tee -a ${LOGFILE}
 fi
 
+if [[ $DO_INSTALL_MOD_VEHICLES == "TRUE" ]]
+then
+  MOD="vehicles"
+  echo "installing mod ${MOD}" | tee -a ${LOGFILE}
+  # for simplicity provided only via git
+  # tarball would be  at wget https://github.com/D00Med/vehicles/archive/master.zip
 
-#todo add more mods?
-# vehicles:
-# git clone https://github.com/D00Med/vehicles.git
-# wget https://github.com/D00Med/vehicles/archive/master.zip
+  if [[ -d ${MOD_DEST_PATH}/${MOD} ]]
+  then
+      echo "${MOD_DEST_PATH}/${MOD} already exists, deleting old and reinstalling..."
+      rm -Rf "${MOD_DEST_PATH}/${MOD}"
+  fi
 
+  git clone https://github.com/D00Med/vehicles.git ${MOD_DEST_PATH}/${MOD}
+
+  echo "Mod vehicles should now be in ${MOD_DEST_PATH}/${MOD}/" | tee -a ${LOGFILE}
+  echo "maybe you need to configure and activate/deactivate specific vehicles (e.g. the warplane/tank/assault_walker stuff)"  | tee -a ${LOGFILE}
+fi
+
+if [[ $DO_INSTALL_MOD_MOB_REDO == "TRUE" ]]
+then
+  MOD="mob_redo"
+  echo "installing first ${MOB} and then some animals/monsters submods," | tee -a ${LOGFILE}
+  echo "see https://forum.minetest.net/viewtopic.php?f=11&t=9917" | tee -a ${LOGFILE}
+  # provided only by git
+
+  # cannot use assitiative arrays, because order is important: 1st mob_redo!
+  SUB_MODS=( "mob_redo" "mobs_animal" "mobs_monster" "mobs_npc" "mob_horse" )
+  GIT_REPOS=( "https://github.com/tenplus1/mobs_redo.git" \
+		  "https://github.com/tenplus1/mobs_animal.git" \
+		  "https://github.com/tenplus1/mobs_monster.git" \
+		  "https://github.com/tenplus1/mobs_npc.git" \
+		  "https://github.com/tenplus1/mob_horse.git" )
+  for ((i=0;i<${#SUB_MODS[@]};++i)); do
+      SUB_MOD=${SUB_MODS[i]}
+      REPO=${GIT_REPOS[i]}
+      printf "installing mod %s from %s\n" "${SUB_MOD}" "${GIT_REPOS}"
+      if [[ -d ${MOD_DEST_PATH}/${SUB_MOD} ]]
+      then
+	  echo "${MOD_DEST_PATH}/${SUB_MOD} already exists, deleting old and reinstalling..."
+	  rm -Rf "${MOD_DEST_PATH}/${SUB_MOD}"
+      fi
+      git clone ${REPO}  ${MOD_DEST_PATH}/${SUB_MOD}
+  done
+  echo "maybe you need to configure some mobs in the relevant init.lua file..." | tee -a ${LOGFILE}
+  echo "(I like to make all mobs (esp. horse) *much* rarer, factor 20-100)"  | tee -a ${LOGFILE}
+fi
+  
+# 3d armor is probably comflicting with wardrobe?
+if [[ $DO_INSTALL_MOD_3D_ARMOR == "TRUE" ]]
+then
+  MOD="3d_armor"
+  echo "installing mod ${MOD}" | tee -a ${LOGFILE}
+  # for simplicity provided only via git
+
+  if [[ -d ${MOD_DEST_PATH}/${MOD} ]]
+  then
+      echo "${MOD_DEST_PATH}/${MOD} already exists, deleting old and reinstalling..."
+      rm -Rf "${MOD_DEST_PATH}/${MOD}"
+  fi
+
+  git clone https://github.com/stujones11/minetest-3d_armor.git ${MOD_DEST_PATH}/${MOD}
+
+  echo "Mod 3d_armor should now be in ${MOD_DEST_PATH}/${MOD}/" | tee -a ${LOGFILE}
+  echo "see  https://forum.minetest.net/viewtopic.php?f=11&t=4654 "  | tee -a ${LOGFILE}
+fi
+  
+# todo add more mods?
+  
+# farming redo already is part of deambuilder pack https://forum.minetest.net/viewtopic.php?f=11&t=90194
+# maybe also some stuff like not so simple mobs, or survival mode stuff (hunger etc)
+  
+  
+
+  
 ###########################################
 # old stuff, kept for no good reason but to have em in mind...
 ###########################################
