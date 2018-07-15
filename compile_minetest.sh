@@ -45,8 +45,8 @@ DO_INSTALL_SYSTEM_PACKAGES=YES
 # It expects the mods NOT already been cloned/installed.
 DO_INSTALL_MOD_DREAMBUILDER=TRUE
 
-# I could think that wardrobe conflicts with 3d_armor (but not checked that)
-DO_INSTALL_MOD_WARDROBE=FALSE
+# Wardrobe actually is compatible with 3d_armor 
+DO_INSTALL_MOD_WARDROBE=TRUE
 DO_INSTALL_MOD_3D_ARMOR=TRUE
 
 DO_INSTALL_MOD_VEHICLES=TRUE
