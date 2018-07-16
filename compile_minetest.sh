@@ -1,27 +1,28 @@
 #!/usr/bin/env bash
 # Read README.txt of the source and maybe http://wiki.minetest.com/wiki/Installing_Mods
 
-echo "This script will unpack and then build minetest from sources."
-echo "either by let it itself download stuff from github."
-echo "Or you can download each tarball of minetest and minetest_game and mods"
-echo "and then tell this script where the tarballs are located."
+echo "This script will install dependencies and then minetest and then into minetest some mods "
+echo "from sources - either by downloading sources direclty from github or by using pre-downloas."
+echo "So you can download each tarball of minetest, minetest_game and mods"
+echo "and then tell this script where the tarballs are located (but that is mosty "
+echo "untested part of script )."
 echo 
-echo "I wrote this once as a reminder of what I have done to get it done."
-echo "Now it can do it all alone."
+echo "I wrote this script once as a reminder of what I have done to get it done."
+echo "Now the script can do it all alone."
 echo
 echo "You simply can call this script without any arguments."
-echo "But maybe you cant to edit some settings inside this script first."
+echo "But maybe you want to edit some settings inside this script first."
 echo 
 echo "usage: [DEST_BASE] [TARBALL_FOLDER]"
 echo
-echo "optional DEST_BASE defaults to HOME/bin/ - where all binaries are build."
-echo "optional SOURCE_BASEPATH defaults to . - this folder contains the (already downloaded) tarballs."
+echo "optional DEST_BASE defaults to '$HOME/bin/' - where all binaries are build."
+echo "optional SOURCE_BASEPATH defaults to '.' - this folder contains the (already downloaded) tarballs."
 echo "SOURCE_BASEPATH is only needed when using tarballs and not github."
 echo "SOURCE_BASEPATH is not used at all when using git to clone the sources straight from github."
 echo "The executables of minetest (client/server) are found under"
-echo "DEST_BASE/bin/minetest-${MINETEST_VERSION}/bin/"
+echo 'DEST_BASE/bin/minetest-${MINETEST_VERSION}/bin/'
 echo
-echo "you can start the client straight away."
+echo "After installing you can start the client 'minetest' straight away."
 echo "If you want to serve a world, you have to configure the mods once for the new world:" 
 echo "After installing the mods, start Minetest (client), "
 echo "go to the world's 'Configure' menu, click 'Enable All' then 'Save'."
@@ -44,13 +45,17 @@ DO_INSTALL_SYSTEM_PACKAGES=YES
 # Download sources and then inject into the *global* mods folder.
 # It expects the mods NOT already been cloned/installed.
 DO_INSTALL_MOD_DREAMBUILDER=TRUE
+# Her github repo is not public and needs login credentials to github.
+# So you can specify here TAR to download her own tarball via wget
+# it GIT to just get it from github via your login credentials
+USE_TARBALL_OR_GIT_MOD_DREAMBUILDER=TAR
 
 # Wardrobe actually is compatible with 3d_armor 
 DO_INSTALL_MOD_WARDROBE=TRUE
 DO_INSTALL_MOD_3D_ARMOR=TRUE
 
 DO_INSTALL_MOD_VEHICLES=TRUE
-DO_INSTALL_MOD_MOB_REDO=TRUE
+DO_INSTALL_MOD_MOB=TRUE
 
 ##############################################
 # here you can specify more stuff, normally leave it as is?
@@ -72,6 +77,7 @@ export RUN_IN_PLACE=TRUE
 # we expect SOURCE_BASEPATH and DEST_BASE folder to already exist...
 # If you are using git, we expect the repo already cloned, e.g. 
 # Some mods also can be installed either by git or tarball.
+# (dreambuilder has its own flag USE_TARBALL_OR_GIT_MOD_DREAMBUILDER)
 USE_TARBALL_OR_GIT=GIT
 
 # all as one-liner - so have the backslash as last character of each line here...
@@ -114,7 +120,16 @@ then
 fi
 
 # todo should be empty, maybe better ask if to clear out existing folder?
-mkdir ${DEST_BASE}/${MINETEST}
+
+if [[ -d ${DEST_BASE}/${MINETEST} ]] # already existed!
+then
+    echo "/!\ Caution: ${DEST_BASE}/${MINETEST} already existing - not daring to overwrite existing game!You can manually run this command to delete the folder and the re-run this script:"
+    echo "rm -Rf  ${DEST_BASE}/${MINETEST}"
+   exit 1
+else
+    mkdir -p ${DEST_BASE}/${MINETEST}
+fi
+   
 # todo check if it now exists, writable etc... else: abort
 
 # must be outside of clone dest folder, otherwise git clone cannot work
@@ -152,9 +167,11 @@ then
   #apt-get install redis-server libhiredis-dev
 
   # this was for 0.4.16 - straight from README.txt
-  sudo apt-get install build-essential libirrlicht-dev cmake libbz2-dev libpng-dev \
-       libjpeg-dev libxxf86vm-dev libgl1-mesa-dev libsqlite3-dev libogg-dev libvorbis-dev \
-       libopenal-dev libcurl4-gnutls-dev libfreetype6-dev zlib1g-dev libgmp-dev libjsoncpp-dev
+  PKGS="build-essential libirrlicht-dev cmake libbz2-dev libpng-dev libjpeg-dev libxxf86vm-dev libgl1-mesa-dev libsqlite3-dev libogg-dev libvorbis-dev libopenal-dev libcurl4-gnutls-dev libfreetype6-dev zlib1g-dev libgmp-dev libjsoncpp-dev cmake git tar bzip2"
+  echo "Installing packages via sudo apt install:" | tee -a ${LOGFILE}
+  # echo ${PKGS} | tee -a ${LOGFILE}
+  echo "sudo apt install ${PKGS}" | tee -a ${LOGFILE}
+  sudo apt install ${PKGS}
 fi #DO_INSTALL_SYSTEM_PACKAGES
 
 
@@ -180,14 +197,19 @@ then
     echo "source tarball folder is: $SOURCE_BASEPATH" | tee -a ${LOGFILE}
   
     # we expect this folder to already exist...
+    echo "cd ${DEST_BASE}" | tee -a ${LOGFILE}
     cd ${DEST_BASE}
+    echo "tar -xzf ${SOURCE_BASEPATH}/${MINETEST}.tar.gz" | tee -a ${LOGFILE}
     tar -xzf ${SOURCE_BASEPATH}/${MINETEST}.tar.gz 
+    echo "cd ${DEST_BASE}/${MINETEST}/games/"| tee -a ${LOGFILE}
     cd ${DEST_BASE}/${MINETEST}/games/
+    echo "tar -xzf ${SOURCE_BASEPATH}/${MINETEST_GAME}.tar.gz " | tee -a ${LOGFILE}
     tar -xzf ${SOURCE_BASEPATH}/${MINETEST_GAME}.tar.gz 
+    echo "mv ${MINETEST_GAME} minetest_game" | tee -a ${LOGFILE}
     mv ${MINETEST_GAME} minetest_game #hack - the subgame needs *this* name to be found
-
+    echo "cd ${CWD_TMP}"| tee -a ${LOGFILE}
     cd ${CWD_TMP} # go back from where we came
-  fi
+  fi # TAR
 
   #todo no errors handled - just use one of either TAR or GIT please :-)
   if [[ $USE_TARBALL_OR_GIT == "GIT" ]]
@@ -197,27 +219,33 @@ then
 
     echo "cloning sources from github... " | tee -a ${LOGFILE}
 
-    echo git clone https://github.com/minetest/minetest.git ${DEST_BASE}/${MINETEST}
+    echo "git clone https://github.com/minetest/minetest.git ${DEST_BASE}/${MINETEST} "| tee -a ${LOGFILE}
     git clone https://github.com/minetest/minetest.git ${DEST_BASE}/${MINETEST}
 
+    echo "cd ${DEST_BASE}/${MINETEST}" | tee -a ${LOGFILE}
     cd ${DEST_BASE}/${MINETEST}
     # git tag # shows all available tags
+    echo "git checkout ${MINETEST_VERSION}" | tee -a ${LOGFILE}
     git checkout ${MINETEST_VERSION}
     # todo since version is user-input for this script, I should check, 
     # if that checkou was successfull...
 
+    echo "cd  ${DEST_BASE} " | tee -a ${LOGFILE}
     cd  ${DEST_BASE} 
     # this seems as a dirty hack for me: it MUST have this 
     # fixed name "minetest_game" and nothing else...
-    echo git clone https://github.com/minetest/minetest_game.git ${DEST_BASE}/${MINETEST}/games/minetest_game
+    echo "git clone https://github.com/minetest/minetest_game.git ${DEST_BASE}/${MINETEST}/games/minetest_game" | tee -a ${LOGFILE}
     git clone https://github.com/minetest/minetest_game.git ${DEST_BASE}/${MINETEST}/games/minetest_game
+    echo "cd  ${DEST_BASE}/${MINETEST}/games/minetest_game" | tee -a ${LOGFILE}
     cd  ${DEST_BASE}/${MINETEST}/games/minetest_game
     # git tag # shows all available tags
+    echo "git checkout ${MINETEST_VERSION} "| tee -a ${LOGFILE}
     git checkout ${MINETEST_VERSION}
 
+    echo "cd ${CWD_TMP} "| tee -a ${LOGFILE}
     cd ${CWD_TMP} # go back from where we came
-  fi
-fi # DO_INSTALL_SYSTEM_PACKAGES
+  fi # GIT
+fi # DO_PREPARE_BUILD
 
 
 if [[ $DO_BUILD == "YES" ]]
@@ -227,21 +255,21 @@ then
   # so we can go back later since here we must checkout desired version...
   export CWD_TMP=${PWD}
 
-  cd ${DEST_BASE}/${MINETEST}/build
-  echo cd ${DEST_BASE}/${MINETEST}/build
   echo "here we will build all stuff..."| tee -a ${LOGFILE}
-
+  echo "cd ${DEST_BASE}/${MINETEST}/build" | tee -a ${LOGFILE}
+  cd ${DEST_BASE}/${MINETEST}/build
   echo "configuring..." | tee -a ${LOGFILE}
+  echo "cmake .. ${BUILD_OPTS} &>> ${LOGFILE}"| tee -a ${LOGFILE}
   cmake .. ${BUILD_OPTS} &>> ${LOGFILE}
 
   echo "building..." | tee -a ${LOGFILE}
+  echo "make -j4 >> ${LOGFILE} 2>&1"	| tee -a ${LOGFILE}
   make -j4 >> ${LOGFILE} 2>&1	
 
   echo "done... check for problems in ${LOGFILE}" | tee -a ${LOGFILE}
   echo "binary of client and server should now be in ${DEST_BASE}/${MINETEST}/bin/" | tee -a ${LOGFILE}
-
+  echo "cd ${CWD_TMP}" | tee -a ${LOGFILE}
   cd ${CWD_TMP} # go back from where we came
-
 fi # DO_BUILD
 
 #############################################################
@@ -259,23 +287,34 @@ then
   echo "installing ${MOD}, see  https://forum.minetest.net/viewtopic.php?f=11&t=9196" | tee -a ${LOGFILE}
   if [[  -d ${MOD_DEST_PATH}/${MOD} ]]
   then
-      echo "${MOD_DEST_PATH}/${MOD} already exists, deleting old and reinstalling..."
+      echo "${MOD_DEST_PATH}/${MOD} already exists, deleting old and reinstalling..." | tee -a ${LOGFILE}
       rm -Rf "${MOD_DEST_PATH}/${MOD}"
   fi
 
-  if [[ $USE_TARBALL_OR_GIT == "TAR" ]]
+  # if [[ $USE_TARBALL_OR_GIT == "TAR" ]]
+  if [[ $USE_TARBALL_OR_GIT_MOD_DREAMBUILDER == "TAR" ]]
   then
     CWD_TMP=${PWD}
+    echo cd ${MOD_DEST_PATH}
     cd ${MOD_DEST_PATH}
     # todo check if wget is installed... and if download succeeded
+    echo wget https://daconcepts.com/vanessa/hobbies/minetest/Dreambuilder_Modpack.tar.bz2
     wget https://daconcepts.com/vanessa/hobbies/minetest/Dreambuilder_Modpack.tar.bz2
+    echo tar -xjf Dreambuilder_Modpack.tar.bz2
     tar -xjf Dreambuilder_Modpack.tar.bz2
-    #rm Dreambuilder_Modpack.tar.bz2
-    echo cd ${CWD_TMP} # go back from where we came
+    rm Dreambuilder_Modpack.tar.bz2
+    echo cd ${CWD_TMP}
+    cd ${CWD_TMP} # go back from where we came
+    
   fi
 
-  if [[ $USE_TARBALL_OR_GIT == "GIT" ]]
+  if [[ $USE_TARBALL_OR_GIT_MOD_DREAMBUILDER == "GIT" ]]
   then
+      echo "As of July 2018 the github repo of Vanessa seems non-pulic. "| tee -a ${LOGFILE}
+      echo "So you have to provide a github login to access it"| tee -a ${LOGFILE}
+      echo "... alternatively you can use her website and weg it. "| tee -a ${LOGFILE}
+      echo "Just set for THIS mod USE_TARBALL_OR_GIT=TAR and rerun script."| tee -a ${LOGFILE}
+    echo "git clone https://github.com/VanessaE/dreambuilder_modpack.git  ${MOD_DEST_PATH}/${MOD}"| tee -a ${LOGFILE}
     git clone https://github.com/VanessaE/dreambuilder_modpack.git  ${MOD_DEST_PATH}/${MOD}
   fi
 
@@ -292,9 +331,10 @@ then
 
   if [[ -d ${MOD_DEST_PATH}/${MOD} ]]
   then
-      echo "${MOD_DEST_PATH}/${MOD} already exists, deleting old and reinstalling..."
+      echo "${MOD_DEST_PATH}/${MOD} already exists, deleting old and reinstalling..."| tee -a ${LOGFILE}
       rm -Rf "${MOD_DEST_PATH}/${MOD}"
   fi
+  echo "git clone https://github.com/prestidigitator/minetest-mod-wardrobe.git  ${MOD_DEST_PATH}/${MOD}" | tee -a ${LOGFILE}
   git clone https://github.com/prestidigitator/minetest-mod-wardrobe.git  ${MOD_DEST_PATH}/${MOD}
 
   echo "Mod wardrobe should now be in ${MOD_DEST_PATH}/${MOD}/" | tee -a ${LOGFILE}
@@ -310,39 +350,42 @@ then
 
   if [[ -d ${MOD_DEST_PATH}/${MOD} ]]
   then
-      echo "${MOD_DEST_PATH}/${MOD} already exists, deleting old and reinstalling..."
+      echo "${MOD_DEST_PATH}/${MOD} already exists, deleting old and reinstalling..." | tee -a ${LOGFILE}
       rm -Rf "${MOD_DEST_PATH}/${MOD}"
   fi
 
+  echo "git clone https://github.com/D00Med/vehicles.git ${MOD_DEST_PATH}/${MOD}" | tee -a ${LOGFILE}
   git clone https://github.com/D00Med/vehicles.git ${MOD_DEST_PATH}/${MOD}
 
   echo "Mod vehicles should now be in ${MOD_DEST_PATH}/${MOD}/" | tee -a ${LOGFILE}
   echo "maybe you need to configure and activate/deactivate specific vehicles (e.g. the warplane/tank/assault_walker stuff)"  | tee -a ${LOGFILE}
 fi
 
-if [[ $DO_INSTALL_MOD_MOB_REDO == "TRUE" ]]
+if [[ $DO_INSTALL_MOD_MOB == "TRUE" ]]
 then
-  MOD="mob_redo"
+  MOD="mob"
   echo "installing first ${MOB} and then some animals/monsters submods," | tee -a ${LOGFILE}
   echo "see https://forum.minetest.net/viewtopic.php?f=11&t=9917" | tee -a ${LOGFILE}
   # provided only by git
 
-  # cannot use assitiative arrays, because order is important: 1st mob_redo!
-  SUB_MODS=( "mob_redo" "mobs_animal" "mobs_monster" "mobs_npc" "mob_horse" )
-  GIT_REPOS=( "https://github.com/tenplus1/mobs_redo.git" \
-		  "https://github.com/tenplus1/mobs_animal.git" \
-		  "https://github.com/tenplus1/mobs_monster.git" \
-		  "https://github.com/tenplus1/mobs_npc.git" \
-		  "https://github.com/tenplus1/mob_horse.git" )
+  # cannot use assotiative arrays, because order is important: 1st mob_redo!
+  echo "this mobs in this order: " | tee -a ${LOGFILE}
+  SUB_MODS=( "mob" "mobs_animal" "mobs_monster" "mobs_npc" "mob_horse" )
+  GIT_REPOS=( "https://github.com/tenplus1/mobs.git" \
+              "https://github.com/tenplus1/mobs_animal.git" \
+              "https://github.com/tenplus1/mobs_monster.git" \
+              "https://github.com/tenplus1/mobs_npc.git" \
+              "https://github.com/tenplus1/mob_horse.git" )
   for ((i=0;i<${#SUB_MODS[@]};++i)); do
       SUB_MOD=${SUB_MODS[i]}
       REPO=${GIT_REPOS[i]}
-      printf "installing mod %s from %s\n" "${SUB_MOD}" "${GIT_REPOS}"
+      printf "installing mod %s from %s\n" "${SUB_MOD}" "${GIT_REPOS}"  | tee -a ${LOGFILE}
       if [[ -d ${MOD_DEST_PATH}/${SUB_MOD} ]]
       then
-	  echo "${MOD_DEST_PATH}/${SUB_MOD} already exists, deleting old and reinstalling..."
+	  echo "${MOD_DEST_PATH}/${SUB_MOD} already exists, deleting old and reinstalling..."  | tee -a ${LOGFILE}
 	  rm -Rf "${MOD_DEST_PATH}/${SUB_MOD}"
       fi
+      echo "git clone ${REPO}  ${MOD_DEST_PATH}/${SUB_MOD}" | tee -a ${LOGFILE}
       git clone ${REPO}  ${MOD_DEST_PATH}/${SUB_MOD}
   done
   echo "maybe you need to configure some mobs in the relevant init.lua file..." | tee -a ${LOGFILE}
@@ -358,10 +401,11 @@ then
 
   if [[ -d ${MOD_DEST_PATH}/${MOD} ]]
   then
-      echo "${MOD_DEST_PATH}/${MOD} already exists, deleting old and reinstalling..."
+      echo "${MOD_DEST_PATH}/${MOD} already exists, deleting old and reinstalling..."| tee -a ${LOGFILE}
       rm -Rf "${MOD_DEST_PATH}/${MOD}"
   fi
 
+  echo "git clone https://github.com/stujones11/minetest-3d_armor.git ${MOD_DEST_PATH}/${MOD}"| tee -a ${LOGFILE}
   git clone https://github.com/stujones11/minetest-3d_armor.git ${MOD_DEST_PATH}/${MOD}
 
   echo "Mod 3d_armor should now be in ${MOD_DEST_PATH}/${MOD}/" | tee -a ${LOGFILE}
@@ -373,25 +417,3 @@ fi
 # farming redo already is part of deambuilder pack https://forum.minetest.net/viewtopic.php?f=11&t=90194
 # maybe also some stuff like not so simple mobs, or survival mode stuff (hunger etc)
   
-  
-
-  
-###########################################
-# old stuff, kept for no good reason but to have em in mind...
-###########################################
-
-
-#= System wide =
-#not sure if I wnana use it... because of the different folders...
-
-#= In Local Folder =
-
-# error with leveldb! Just leave it. 
-# If you once tried to compile with leveldb, you then have to remove all stuff inside build/ - it just won't accept the -DENABLE_LEVELDB=0
-
-# cmake .. -DRUN_IN_PLACE=1 -DCMAKE_BUILD_TYPE=Release -DENABLE_GETTEXT=1 -DENABLE_FREETYPE=1  -DBUILD_CLIENT=1 -DBUILD_SERVER=1 -DENABLE_CURL=1  -DENABLE_GLES=1 -DENABLE_LEVELDB=1 -DENABLE_REDIS=1 -DENABLE_SOUND=1
-
-#cmake .. -DRUN_IN_PLACE=1 -DCMAKE_BUILD_TYPE=Release -DENABLE_GETTEXT=1 -DENABLE_FREETYPE=1  -DBUILD_CLIENT=1 -DBUILD_SERVER=1 -DENABLE_CURL=1  -DENABLE_GLES=1 -DENABLE_LEVELDB=1 -DENABLE_REDIS=1 -DENABLE_SOUND=1
-
-#cmake -j4
-
