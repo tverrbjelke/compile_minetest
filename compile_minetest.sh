@@ -35,7 +35,8 @@ echo "maybe you want to login / out with a special admin account once per sessio
 # Here you can set options and stuff
 ##############################################################
 
-MINETEST_VERSION=0.4.16
+# The tag can be seen from https://github.com/minetest/minetest/tags
+MINETEST_VERSION=0.4.17.1
 
 # I want to be able to jump over/into individual steps - for debugging
 
@@ -48,7 +49,7 @@ DO_INSTALL_MOD_DREAMBUILDER=TRUE
 # Her github repo is not public and needs login credentials to github.
 # So you can specify here TAR to download her own tarball via wget
 # it GIT to just get it from github via your login credentials
-USE_TARBALL_OR_GIT_MOD_DREAMBUILDER=TAR
+USE_TARBALL_OR_GIT_MOD_DREAMBUILDER=GIT
 
 # Wardrobe actually is compatible with 3d_armor 
 DO_INSTALL_MOD_WARDROBE=TRUE
@@ -57,9 +58,17 @@ DO_INSTALL_MOD_3D_ARMOR=TRUE
 DO_INSTALL_MOD_VEHICLES=TRUE
 DO_INSTALL_MOD_MOB=TRUE
 
+DO_INSTALL_MOD_RANGEDWEAPONS=TRUE
+USE_TARBALL_OR_GIT_MOD_RANGEDWEAPONS=ZIP
+
+
 ##############################################
 # here you can specify more stuff, normally leave it as is?
 ##############################################
+
+# Maybe you adopt this to aprox. the number of CPU Cores your computer has.
+# Used for the -j flag when compiling minetest.
+COMPILE_FLAG_J=$(grep -c processor /proc/cpuinfo)
 
 # untar / git-clone and prepare stuff ?
 DO_PREPARE_BUILD=YES
@@ -81,10 +90,15 @@ export RUN_IN_PLACE=TRUE
 USE_TARBALL_OR_GIT=GIT
 
 # all as one-liner - so have the backslash as last character of each line here...
-export BUILD_OPTS="-DRUN_IN_PLACE=${RUN_IN_PLACE} -DCMAKE_BUILD_TYPE=Release -DENABLE_GETTEXT=1 \
-  -DENABLE_FREETYPE=1  -DBUILD_CLIENT=1 -DBUILD_SERVER=1 -DENABLE_CURL=1  -DENABLE_GLES=1 \
-  -DENABLE_LEVELDB=0 -DENABLE_SPATIAL=1 -DENABLE_LUAJIT=1 -DENABLE_SYSTEM_GMP=1 \
-  -DENABLE_REDIS=1 -DENABLE_SOUND=1"
+# I had issues with LEVELDB, I will deactivate it.
+export BUILD_OPTS="-DRUN_IN_PLACE=${RUN_IN_PLACE}   -DBUILD_CLIENT=1 -DBUILD_SERVER=1 \
+  -DCMAKE_BUILD_TYPE=Release -DENABLE_CURL=1 -DENABLE_CURSES=1 \
+  -DENABLE_FREETYPE=1 -DENABLE_GETTEXT=1 -DENABLE_GLES=1 \
+  -DENABLE_LEVELDB=0 -DENABLE_REDIS=1 \
+  -DENABLE_SOUND=1 \
+  -DENABLE_SPATIAL=1 -DENABLE_LUAJIT=1 \
+  -DENABLE_SYSTEM_GMP=1"
+
 echo "Using this compile flags:"
 echo ${BUILD_OPTS}
 
@@ -152,7 +166,7 @@ if [[ $DO_INSTALL_SYSTEM_PACKAGES == "YES" ]]
 then
   echo "installing needed system debain / ubuntu packages, need sudo password."  | tee  ${LOGFILE}
 
-  # this is for 0.4.10
+  # this was for 0.4.10
   #sudo apt-get install build-essential libirrlicht-dev cmake libbz2-dev libpng12-dev \ 
   #libjpeg8-dev libxxf86vm-dev libgl1-mesa-dev libsqlite3-dev libogg-dev libvorbis-dev \ 
   #libopenal-dev libcurl4-gnutls-dev libfreetype6-dev redis-server libhiredis-dev
@@ -162,12 +176,14 @@ then
   #libjpeg-dev libxxf86vm-dev libgl1-mesa-dev libsqlite3-dev libogg-dev libvorbis-dev \
   #libopenal-dev libcurl4-gnutls-dev libfreetype6-dev zlib1g-dev libgmp-dev libjsoncpp-dev
 
-  #More depend. for follolwing options:
+  #More dependencies for some options:
   #apt-get install libleveldb-dev redis-server libhiredis-dev 
   #apt-get install redis-server libhiredis-dev
 
-  # this was for 0.4.16 - straight from README.txt
-  PKGS="build-essential libirrlicht-dev cmake libbz2-dev libpng-dev libjpeg-dev libxxf86vm-dev libgl1-mesa-dev libsqlite3-dev libogg-dev libvorbis-dev libopenal-dev libcurl4-gnutls-dev libfreetype6-dev zlib1g-dev libgmp-dev libjsoncpp-dev cmake git tar bzip2"
+  # this was for 0.4.16 and 0.4.17.1 - straight from README.txt of minetest and some build tools added
+  # ncurses seem to be automatically installed by package xorg
+  PKGS="build-essential libirrlicht-dev cmake libbz2-dev libpng-dev libjpeg-dev libxxf86vm-dev libgl1-mesa-dev libsqlite3-dev libogg-dev libvorbis-dev libopenal-dev libcurl4-gnutls-dev libfreetype6-dev zlib1g-dev libgmp-dev libjsoncpp-dev"
+  PKGS="${PKGS} cmake git tar bzip2" # this is also needed
   echo "Installing packages via sudo apt install:" | tee -a ${LOGFILE}
   # echo ${PKGS} | tee -a ${LOGFILE}
   echo "sudo apt install ${PKGS}" | tee -a ${LOGFILE}
@@ -219,8 +235,8 @@ then
 
     echo "cloning sources from github... " | tee -a ${LOGFILE}
 
-    echo "git clone https://github.com/minetest/minetest.git ${DEST_BASE}/${MINETEST} "| tee -a ${LOGFILE}
-    git clone https://github.com/minetest/minetest.git ${DEST_BASE}/${MINETEST}
+    echo "git clone --depth 1 https://github.com/minetest/minetest.git ${DEST_BASE}/${MINETEST} "| tee -a ${LOGFILE}
+    git clone --depth 1 https://github.com/minetest/minetest.git ${DEST_BASE}/${MINETEST}
 
     echo "cd ${DEST_BASE}/${MINETEST}" | tee -a ${LOGFILE}
     cd ${DEST_BASE}/${MINETEST}
@@ -235,7 +251,7 @@ then
     # this seems as a dirty hack for me: it MUST have this 
     # fixed name "minetest_game" and nothing else...
     echo "git clone https://github.com/minetest/minetest_game.git ${DEST_BASE}/${MINETEST}/games/minetest_game" | tee -a ${LOGFILE}
-    git clone https://github.com/minetest/minetest_game.git ${DEST_BASE}/${MINETEST}/games/minetest_game
+    git clone --depth 1 https://github.com/minetest/minetest_game.git ${DEST_BASE}/${MINETEST}/games/minetest_game
     echo "cd  ${DEST_BASE}/${MINETEST}/games/minetest_game" | tee -a ${LOGFILE}
     cd  ${DEST_BASE}/${MINETEST}/games/minetest_game
     # git tag # shows all available tags
@@ -263,8 +279,8 @@ then
   cmake .. ${BUILD_OPTS} &>> ${LOGFILE}
 
   echo "building..." | tee -a ${LOGFILE}
-  echo "make -j4 >> ${LOGFILE} 2>&1"	| tee -a ${LOGFILE}
-  make -j4 >> ${LOGFILE} 2>&1	
+  echo "make -j${COMPILE_FLAG_J} >> ${LOGFILE} 2>&1" | tee -a ${LOGFILE}
+  make -j${COMPILE_FLAG_J} >> ${LOGFILE} 2>&1	
 
   echo "done... check for problems in ${LOGFILE}" | tee -a ${LOGFILE}
   echo "binary of client and server should now be in ${DEST_BASE}/${MINETEST}/bin/" | tee -a ${LOGFILE}
@@ -278,6 +294,8 @@ fi # DO_BUILD
 
 # install all this mods globally.
 MOD_DEST_PATH=${DEST_BASE}/${MINETEST}/mods
+
+##############################################################
 
 # had some issues installing this mod and so I tried both git and tarball installations. 
 # Hence this two sources git and tarball here...
@@ -310,19 +328,16 @@ then
 
   if [[ $USE_TARBALL_OR_GIT_MOD_DREAMBUILDER == "GIT" ]]
   then
-      echo "As of July 2018 the github repo of Vanessa seems non-pulic. "| tee -a ${LOGFILE}
-      echo "So you have to provide a github login to access it"| tee -a ${LOGFILE}
-      echo "... alternatively you can use her website and weg it. "| tee -a ${LOGFILE}
-      echo "Just set for THIS mod USE_TARBALL_OR_GIT=TAR and rerun script."| tee -a ${LOGFILE}
-    echo "git clone https://github.com/VanessaE/dreambuilder_modpack.git  ${MOD_DEST_PATH}/${MOD}"| tee -a ${LOGFILE}
-    git clone https://github.com/VanessaE/dreambuilder_modpack.git  ${MOD_DEST_PATH}/${MOD}
+      echo "As of July 2018 the github repo of Vanessa moved to gitlab. "| tee -a ${LOGFILE}
+      echo "git clone https://gitlab.com/VanessaE/dreambuilder_modpack  ${MOD_DEST_PATH}/${MOD}"| tee -a ${LOGFILE}
+      git clone https://gitlab.com/VanessaE/dreambuilder_modpack ${MOD_DEST_PATH}/${MOD}
   fi
 
   echo "dreambuilder_modpack should now be in ${MOD_DEST_PATH}/${MOD}/" | tee -a ${LOGFILE}
   echo "maybe you need to configure / tweek it..."  | tee -a ${LOGFILE}
 fi
 
-
+###########################################################
 if [[ $DO_INSTALL_MOD_WARDROBE == "TRUE" ]]
 then
   MOD="wardrobe"
@@ -340,7 +355,7 @@ then
   echo "Mod wardrobe should now be in ${MOD_DEST_PATH}/${MOD}/" | tee -a ${LOGFILE}
   echo "maybe you need to configure and add some skins..."  | tee -a ${LOGFILE}
 fi
-
+############################################################
 if [[ $DO_INSTALL_MOD_VEHICLES == "TRUE" ]]
 then
   MOD="vehicles"
@@ -360,22 +375,28 @@ then
   echo "Mod vehicles should now be in ${MOD_DEST_PATH}/${MOD}/" | tee -a ${LOGFILE}
   echo "maybe you need to configure and activate/deactivate specific vehicles (e.g. the warplane/tank/assault_walker stuff)"  | tee -a ${LOGFILE}
 fi
+############################################################
+# todo moved from github ? https://notabug.org/TenPlus1/mobs_redo
+# git clone https://notabug.org/TenPlus1/mobs_redo.git
 
 if [[ $DO_INSTALL_MOD_MOB == "TRUE" ]]
 then
   MOD="mob"
   echo "installing first ${MOB} and then some animals/monsters submods," | tee -a ${LOGFILE}
   echo "see https://forum.minetest.net/viewtopic.php?f=11&t=9917" | tee -a ${LOGFILE}
+  echo "Watch out, that some of TenPlus1 mods are already part of dreambuilder mod!" | tee -a ${LOGFILE}
   # provided only by git
+  
 
   # cannot use assotiative arrays, because order is important: 1st mob_redo!
   echo "this mobs in this order: " | tee -a ${LOGFILE}
   SUB_MODS=( "mob" "mobs_animal" "mobs_monster" "mobs_npc" "mob_horse" )
-  GIT_REPOS=( "https://github.com/tenplus1/mobs.git" \
-              "https://github.com/tenplus1/mobs_animal.git" \
-              "https://github.com/tenplus1/mobs_monster.git" \
-              "https://github.com/tenplus1/mobs_npc.git" \
-              "https://github.com/tenplus1/mob_horse.git" )
+  GIT_REPOS=( "https://notabug.org/TenPlus1/mobs_redo.git" \
+              "https://notabug.org/TenPlus1/mobs_animal.git" \
+              "https://notabug.org/TenPlus1/mobs_monster.git" \
+              "https://notabug.org/TenPlus1/mobs_npc.git" \
+              "https://notabug.org/TenPlus1/mob_horse.git" ) 
+  
   for ((i=0;i<${#SUB_MODS[@]};++i)); do
       SUB_MOD=${SUB_MODS[i]}
       REPO=${GIT_REPOS[i]}
@@ -391,12 +412,15 @@ then
   echo "maybe you need to configure some mobs in the relevant init.lua file..." | tee -a ${LOGFILE}
   echo "(I like to make all mobs (esp. horse) *much* rarer, factor 20-100)"  | tee -a ${LOGFILE}
 fi
-  
-# 3d armor is probably comflicting with wardrobe?
+
+############################################################
 if [[ $DO_INSTALL_MOD_3D_ARMOR == "TRUE" ]]
 then
   MOD="3d_armor"
   echo "installing mod ${MOD}" | tee -a ${LOGFILE}
+  echo "see https://github.com/stujones11/minetest-3d_armor/" | tee -a ${LOGFILE}
+  echo "Minetest 0.4.16 - 0.4.17.1 need Version 0.4.12" | tee -a ${LOGFILE}
+  MOD_3D_ARMOR_VERSION="version-0.4.12"
   # for simplicity provided only via git
 
   if [[ -d ${MOD_DEST_PATH}/${MOD} ]]
@@ -407,13 +431,50 @@ then
 
   echo "git clone https://github.com/stujones11/minetest-3d_armor.git ${MOD_DEST_PATH}/${MOD}"| tee -a ${LOGFILE}
   git clone https://github.com/stujones11/minetest-3d_armor.git ${MOD_DEST_PATH}/${MOD}
-
-  echo "Mod 3d_armor should now be in ${MOD_DEST_PATH}/${MOD}/" | tee -a ${LOGFILE}
+  # so we can go back later since here we must checkout desired version...
+  export CWD_TMP_MOD=${PWD}
+  cd ${MOD_DEST_PATH}/${MOD}
+  git checkout ${MOD_3D_ARMOR_VERSION}
+  cd ${CWD_TMP_MOD} # jump back
+  
+  echo "Mod 3d_armor version ${MOD_3D_ARMOR_VERSION} should now be in ${MOD_DEST_PATH}/${MOD}/" | tee -a ${LOGFILE}
   echo "see  https://forum.minetest.net/viewtopic.php?f=11&t=4654 "  | tee -a ${LOGFILE}
 fi
-  
+
+###############################################################
+if [[ $DO_INSTALL_MOD_RANGEDWEAPONS == "TRUE" ]]
+then
+  MOD="rangedweapons"
+  echo "installing ${MOD}, see https://forum.minetest.net/viewtopic.php?f=9&t=15173&hilit=gun" | tee -a ${LOGFILE}
+  if [[  -d ${MOD_DEST_PATH}/${MOD} ]]
+  then
+      echo "${MOD_DEST_PATH}/${MOD} already exists, deleting old and reinstalling..." | tee -a ${LOGFILE}
+      rm -Rf "${MOD_DEST_PATH}/${MOD}"
+  fi
+
+  # only zip available
+  if [[ $USE_TARBALL_OR_GIT_MOD_RANGEDWEAPONS == "ZIP" ]]
+  then
+    CWD_TMP=${PWD}
+    echo cd ${MOD_DEST_PATH}
+    cd ${MOD_DEST_PATH}
+    # todo check if wget is installed... and if download succeeded
+    # this mod comes as zip directly from the minetest forum, but the downloaded filename is odd...
+    echo wget -O rangedweapons_0.3.zip https://forum.minetest.net/download/file.php?id=16336
+    wget -O rangedweapons_0.3.zip https://forum.minetest.net/download/file.php?id=16336
+    echo unzip rangedweapons_0.3.zip
+    unzip rangedweapons_0.3.zip
+    rm rangedweapons_0.3.zip
+    echo cd ${CWD_TMP}
+    cd ${CWD_TMP} # go back from where we came    
+  fi
+
+  echo "$MOD should now be in ${MOD_DEST_PATH}/${MOD}/" | tee -a ${LOGFILE}
+  echo "maybe you need to configure / tweek it..."  | tee -a ${LOGFILE}
+fi
+
+
 # todo add more mods?
-  
 # farming redo already is part of deambuilder pack https://forum.minetest.net/viewtopic.php?f=11&t=90194
 # maybe also some stuff like not so simple mobs, or survival mode stuff (hunger etc)
   
