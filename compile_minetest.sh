@@ -68,7 +68,7 @@ USE_TARBALL_OR_GIT_MOD_RANGEDWEAPONS=ZIP
 
 # Maybe you adopt this to aprox. the number of CPU Cores your computer has.
 # Used for the -j flag when compiling minetest.
-COMPILE_FLAG_J=$(grep -c processor /proc/cpuinfo)
+COMPILE_FLAG_J=$(nproc)
 
 # untar / git-clone and prepare stuff ?
 DO_PREPARE_BUILD=YES
@@ -184,6 +184,7 @@ then
   # ncurses seem to be automatically installed by package xorg
   PKGS="build-essential libirrlicht-dev cmake libbz2-dev libpng-dev libjpeg-dev libxxf86vm-dev libgl1-mesa-dev libsqlite3-dev libogg-dev libvorbis-dev libopenal-dev libcurl4-gnutls-dev libfreetype6-dev zlib1g-dev libgmp-dev libjsoncpp-dev"
   PKGS="${PKGS} cmake git tar bzip2" # this is also needed
+  PKGS="${PKGS} libcurl4-gnutls-dev libncursesw5-dev" # for --terminal to work properly
   echo "Installing packages via sudo apt install:" | tee -a ${LOGFILE}
   # echo ${PKGS} | tee -a ${LOGFILE}
   echo "sudo apt install ${PKGS}" | tee -a ${LOGFILE}
@@ -235,8 +236,8 @@ then
 
     echo "cloning sources from github... " | tee -a ${LOGFILE}
 
-    echo "git clone --depth 1 https://github.com/minetest/minetest.git ${DEST_BASE}/${MINETEST} "| tee -a ${LOGFILE}
-    git clone --depth 1 https://github.com/minetest/minetest.git ${DEST_BASE}/${MINETEST}
+    echo "git clone https://github.com/minetest/minetest.git ${DEST_BASE}/${MINETEST} "| tee -a ${LOGFILE}
+    git clone https://github.com/minetest/minetest.git ${DEST_BASE}/${MINETEST}
 
     echo "cd ${DEST_BASE}/${MINETEST}" | tee -a ${LOGFILE}
     cd ${DEST_BASE}/${MINETEST}
@@ -251,7 +252,7 @@ then
     # this seems as a dirty hack for me: it MUST have this 
     # fixed name "minetest_game" and nothing else...
     echo "git clone https://github.com/minetest/minetest_game.git ${DEST_BASE}/${MINETEST}/games/minetest_game" | tee -a ${LOGFILE}
-    git clone --depth 1 https://github.com/minetest/minetest_game.git ${DEST_BASE}/${MINETEST}/games/minetest_game
+    git clone  https://github.com/minetest/minetest_game.git ${DEST_BASE}/${MINETEST}/games/minetest_game
     echo "cd  ${DEST_BASE}/${MINETEST}/games/minetest_game" | tee -a ${LOGFILE}
     cd  ${DEST_BASE}/${MINETEST}/games/minetest_game
     # git tag # shows all available tags
