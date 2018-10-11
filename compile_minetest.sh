@@ -36,8 +36,8 @@ echo "maybe you want to login / out with a special admin account once per sessio
 ##############################################################
 
 # The tag can be seen from https://github.com/minetest/minetest/tags
-MINETEST_VERSION=0.4.17.1
-
+# MINETEST_VERSION=0.4.17.1 # not stable, had a ERROR bug 
+MINETEST_VERSION=stable-0.4
 # I want to be able to jump over/into individual steps - for debugging
 
 # Really install system packages? (needs sudo for this to work)
