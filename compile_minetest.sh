@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 # Read README.txt of the source and maybe http://wiki.minetest.com/wiki/Installing_Mods
 
+# Update 16. Dec. 2021: minetest 5.3.0
+
+# see Re: [Debian / Ubuntu] 1-line script: install Minetest Git
+# https://forum.minetest.net/viewtopic.php?p=356887#p356887
+# by SteveTeece Fri Sep 13, 2019 05:12
+
+# git clone https://github.com/minetest/minetest.git; cd minetest/games; git clone https://github.com/minetest/minetest_game.git; cd ..; cmake . -DRUN_IN_PLACE=0 -DENABLE_GETTEXT=1 -DENABLE_FREETYPE=1 -DENABLE_LEVELDB=0 -DBUILD_CLIENT=0 -DBUILD_SERVER=1; make -j$(nproc); sudo make install; echo -e "\n\n\e[1;33mYou can run Minetest again by typing \"minetest\" in a terminal or selecting it in an applications menu.\nYou can install mods in ~/.minetest/mods, too.\e[0m"
+
+
+
 echo "This script will install dependencies and then minetest and then into minetest some mods "
 echo "from sources - either by downloading sources direclty from github or by using pre-downloas."
 echo "So you can download each tarball of minetest, minetest_game and mods"
@@ -37,7 +47,9 @@ echo "maybe you want to login / out with a special admin account once per sessio
 
 # The tag can be seen from https://github.com/minetest/minetest/tags
 # MINETEST_VERSION=0.4.17.1 # not stable, had a ERROR bug 
-MINETEST_VERSION=stable-0.4
+#MINETEST_VERSION=stable-0.4
+MINETEST_VERSION=5.3.0
+
 # I want to be able to jump over/into individual steps - for debugging
 
 # Really install system packages? (needs sudo for this to work)
@@ -91,17 +103,25 @@ USE_TARBALL_OR_GIT=GIT
 
 # all as one-liner - so have the backslash as last character of each line here...
 # I had issues with LEVELDB, I will deactivate it.
+# Version stable 0.4
+#export BUILD_OPTS="-DRUN_IN_PLACE=${RUN_IN_PLACE}   -DBUILD_CLIENT=1 -DBUILD_SERVER=1 \
+#  -DCMAKE_BUILD_TYPE=Release -DENABLE_CURL=1 -DENABLE_CURSES=1 \
+#  -DENABLE_FREETYPE=1 -DENABLE_GETTEXT=1 -DENABLE_GLES=1 \
+#  -DENABLE_LEVELDB=0 -DENABLE_REDIS=1 \
+#  -DENABLE_SOUND=1 \
+#  -DENABLE_SPATIAL=1 -DENABLE_LUAJIT=1 \
+#  -DENABLE_SYSTEM_GMP=1"
+
+# Version stable 0.5.3.0
+# todo recheck - there might be missing some flags!
 export BUILD_OPTS="-DRUN_IN_PLACE=${RUN_IN_PLACE}   -DBUILD_CLIENT=1 -DBUILD_SERVER=1 \
   -DCMAKE_BUILD_TYPE=Release -DENABLE_CURL=1 -DENABLE_CURSES=1 \
-  -DENABLE_FREETYPE=1 -DENABLE_GETTEXT=1 -DENABLE_GLES=1 \
-  -DENABLE_LEVELDB=0 -DENABLE_REDIS=1 \
-  -DENABLE_SOUND=1 \
-  -DENABLE_SPATIAL=1 -DENABLE_LUAJIT=1 \
-  -DENABLE_SYSTEM_GMP=1"
+  -DENABLE_FREETYPE=1 -DENABLE_GETTEXT=1 \
+  -DENABLE_LEVELDB=0 \
+  -DENABLE_SOUND=1"
 
 echo "Using this compile flags:"
 echo ${BUILD_OPTS}
-
 
 
 ##############################################################
@@ -182,9 +202,20 @@ then
 
   # this was for 0.4.16 and 0.4.17.1 - straight from README.txt of minetest and some build tools added
   # ncurses seem to be automatically installed by package xorg
-  PKGS="build-essential libirrlicht-dev cmake libbz2-dev libpng-dev libjpeg-dev libxxf86vm-dev libgl1-mesa-dev libsqlite3-dev libogg-dev libvorbis-dev libopenal-dev libcurl4-gnutls-dev libfreetype6-dev zlib1g-dev libgmp-dev libjsoncpp-dev"
-  PKGS="${PKGS} cmake git tar bzip2" # this is also needed
-  PKGS="${PKGS} libcurl4-gnutls-dev libncursesw5-dev" # for --terminal to work properly
+  #PKGS="build-essential libirrlicht-dev cmake libbz2-dev libpng-dev libjpeg-dev libxxf86vm-dev libgl1-mesa-dev libsqlite3-dev libogg-dev libvorbis-dev libopenal-dev libcurl4-gnutls-dev libfreetype6-dev zlib1g-dev libgmp-dev libjsoncpp-dev"
+  #PKGS="${PKGS} cmake git tar bzip2" # this is also needed
+  #PKGS="${PKGS} libcurl4-gnutls-dev libncursesw5-dev" # for --terminal to work properly
+
+
+  # This is for 5
+  # Changes/issues:
+  # debian stretch has no libpng12-dev but libpng-dev -> 1.6.28-1+deb9u1
+  # libcurl4-gnutls-dev will be removed instead of libcurl4-openssl-dev
+  
+  PKGS="git build-essential libirrlicht-dev libgettextpo0 libfreetype6-dev cmake libbz2-dev libpng-dev libjpeg62-turbo-dev libxxf86vm-dev libgl1-mesa-dev libsqlite3-dev libogg-dev libvorbis-dev libopenal-dev libcurl4-openssl-dev libluajit-5.1-dev liblua5.1-0-dev libleveldb-dev"
+  PKGS="${PKGS} libgmp-dev libjsoncpp-dev"
+  PKGS="${PKGS} tar bzip2" # this is also needed
+
   echo "Installing packages via sudo apt install:" | tee -a ${LOGFILE}
   # echo ${PKGS} | tee -a ${LOGFILE}
   echo "sudo apt install ${PKGS}" | tee -a ${LOGFILE}
